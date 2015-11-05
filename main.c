@@ -1,11 +1,7 @@
-
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 #include <linux/limits.h>
-#include <sys/times.h>
-
-
 
 typedef long long int num;
 
