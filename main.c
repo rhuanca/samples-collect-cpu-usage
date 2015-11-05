@@ -6,7 +6,10 @@
 #include <sys/times.h>
 
 
+
 typedef long long int num;
+
+num uptime;
 
 num pid;
 char tcomm[PATH_MAX];
@@ -56,14 +59,23 @@ num cpu;
 num rt_priority;
 num policy;
 
+num total_time;
+long hertz;
+double cpu_usage;
+num seconds;
+
 long tickspersec;
 
-FILE *input;
+FILE *stat_input;
+FILE *uptime_input;
 
-void readone(num *x) { fscanf(input, "%lld ", x); }
-void readunsigned(unsigned long long *x) { fscanf(input, "%llu ", x); }
-void readstr(char *x) {  fscanf(input, "%s ", x);}
-void readchar(char *x) {  fscanf(input, "%c ", x);}
+
+void readone2(num *x) { fscanf(uptime_input, "%lld ", x); };
+
+void readone(num *x) { fscanf(stat_input, "%lld ", x); }
+void readunsigned(unsigned long long *x) { fscanf(stat_input, "%llu ", x); }
+void readstr(char *x) {  fscanf(stat_input, "%s ", x);}
+void readchar(char *x) {  fscanf(stat_input, "%c ", x);}
 
 void printone(char *name, num x) {  printf("%20s: %lld\n", name, x);}
 void printonex(char *name, num x) {  printf("%20s: %016llx\n", name, x);}
@@ -94,18 +106,26 @@ void printtimediff(char *name, num x) {
 
 int main(int argc, char *argv[]) {
     tickspersec = sysconf(_SC_CLK_TCK);
-    input = NULL;
+    stat_input = NULL;
 
     if(argc > 1) {
+
+        uptime_input = fopen("/proc/uptime", "r");
+
         chdir("/proc");
-        if(chdir(argv[1]) == 0) { input = fopen("stat", "r"); }
-        if(!input) {
+        if(chdir(argv[1]) == 0) { stat_input = fopen("stat", "r"); }
+        if(!stat_input) {
             perror("open");
             return 1;
         }
     } else {
-        input = stdin;
+        stat_input = stdin;
     }
+
+    readone2(&uptime);
+
+    printf("%u\n", uptime);
+
 
 
     readone(&pid);
@@ -150,50 +170,31 @@ int main(int argc, char *argv[]) {
     readone(&rt_priority);
     readone(&policy);
 
-    {
+    total_time = utime + stimev;
 
-        printone("pid", pid);
-        printstr("tcomm", tcomm);
-        printchar("state", state);
-        printone("ppid", ppid);
-        printone("pgid", pgid);
-        printone("sid", sid);
-        printone("tty_nr", tty_nr);
-        printone("tty_pgrp", tty_pgrp);
-        printone("flags", flags);
-        printone("min_flt", min_flt);
-        printone("cmin_flt", cmin_flt);
-        printone("maj_flt", maj_flt);
-        printone("cmaj_flt", cmaj_flt);
-        printtime("utime", utime);
-        printtime("stime", stimev);
-        printtime("cutime", cutime);
-        printtime("cstime", cstime);
-        printone("priority", priority);
-        printone("nice", nicev);
-        printone("num_threads", num_threads);
-        printtime("it_real_value", it_real_value);
-        printtimediff("start_time", start_time);
-        printone("vsize", vsize);
-        printone("rss", rss);
-        printone("rsslim", rsslim);
-        printone("start_code", start_code);
-        printone("end_code", end_code);
-        printone("start_stack", start_stack);
-        printone("esp", esp);
-        printone("eip", eip);
-        printonex("pending", pending);
-        printonex("blocked", blocked);
-        printonex("sigign", sigign);
-        printonex("sigcatch", sigcatch);
-        printone("wchan", wchan);
-        printone("zero1", zero1);
-        printone("zero2", zero2);
-        printonex("exit_signal", exit_signal);
-        printone("cpu", cpu);
-        printone("rt_priority", rt_priority);
-        printone("policy", policy);
-    }
+    printf("utime: %u\n", utime);
+    printf("stimev: %u\n", stimev);
+    printf("total time 1: %u\n", total_time);
+
+    total_time = total_time + cutime + cstime;
+
+    printf("total time 2: %u\n", total_time);
+
+    hertz = sysconf(_SC_CLK_TCK);
+
+    seconds = uptime - (start_time / hertz);
+    printf("seconds: %u\n", seconds);
+
+    printf("hertz: %u\n", hertz);
+
+
+    printf("val 1: %u\n", (total_time / hertz));
+
+    cpu_usage = 100.0 * ((total_time / hertz) / (double)seconds );
+
+
+    printf("cpu usage: %f\n", cpu_usage);
+
 
     return 0;
 }
